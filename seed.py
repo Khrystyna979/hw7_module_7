@@ -23,7 +23,7 @@ fake_data = faker.Faker()
 
 def seed_groups():
     for i in range(1, NUMBER_GROUPS + 1):
-        group = Group(group_name=f"{'PY'}-{i}")
+        group = Group(group_name=f"PY-{i}")
         session.add(group)
     session.commit()
     
@@ -35,8 +35,12 @@ def seed_teachers():
     
 def seed_disciplines():
     teacher_ids = session.scalars(select(Teacher.id)).all()
-    for discipline in DISCIPLINES:
-        session.add(Discipline(discipline_name=discipline, teacher_id=choice(teacher_ids)))
+    for i, discipline in enumerate(DISCIPLINES):
+        if i < len(teacher_ids):
+            t_id = teacher_ids[i]
+        else:
+            t_id = choice(teacher_ids) 
+        session.add(Discipline(discipline_name=discipline, teacher_id=t_id))
     session.commit()
     
 def seed_students():
@@ -53,26 +57,30 @@ def seed_grades():
     """
     student_ids = session.scalars(select(Student.id)).all()
     discipline_ids = session.scalars(select(Discipline.id)).all()
+    grades_to_add = []
     
     for s_id in student_ids:
-        
+
         for d_id in discipline_ids:
-            grade = Grade(
+            grades_to_add.append(Grade(
                 student_id=s_id, 
                 discipline_id=d_id, 
                 grade=randint(1, 100), 
-                created_at=datetime(2025, 12, randint(10, 20)).date()) # Дата оцінки обирається випадково в межах сесії за перший семестр
-            session.add(grade)
-                    
-        extra_grades_count = randint(0, NUMBER_GRADES - len(discipline_ids))
+                created_at=datetime(2025, 12, randint(10, 20)).date()
+            ))
+
+        max_extra_grades = max(0, NUMBER_GRADES - len(discipline_ids))
+        extra_grades_count = randint(0, max_extra_grades)
         
         for _ in range(extra_grades_count):
-            grade = Grade(
+            grades_to_add.append(Grade(
                 student_id=s_id, 
                 discipline_id=choice(discipline_ids), 
                 grade=randint(1, 100), 
-                created_at=datetime(2025, 12, randint(10, 20)).date())
-            session.add(grade)
+                created_at=datetime(2025, 12, randint(10, 20)).date()
+            ))
+            
+    session.add_all(grades_to_add)
     session.commit()
 
 if __name__ == '__main__':
